@@ -1,0 +1,3 @@
+rootProject.name = 'gateway-and-keycloak'
+
+include("api-gateway", "oauth2-resource-server-app")

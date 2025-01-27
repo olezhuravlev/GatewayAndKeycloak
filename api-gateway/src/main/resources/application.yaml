@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: api-gateway
+  data:
+    redis:
+      host: redis
+      port: 6379
+  security:
+    oauth2:
+      client:
+        provider:
+          keycloak:
+            issuer-uri: http://keycloak:8080/realms/spmia-realm
+        registration:
+          keycloak:
+            provider: keycloak
+            client-id: ostock
+            client-secret: OwLrgbbSGI3X6IMzxY0ra0OfMr4eVt27
+            authorization-grant-type: authorization_code
+            scope:
+              - openid
+              - email
+              - profile
+              - roles
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            exposedHeaders: "*"
+      routes:
+        - id: test-app
+          uri: http://localhost:8090/
+          predicates:
+            - Path=/test/**
+            - Method= GET
+          filters:
+            - TokenRelay=
+server:
+  port: 8091

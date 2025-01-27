@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: test-app
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/spmia-realm
+server:
+  port: 8090

@@ -1,0 +1,110 @@
+version: "3.8"
+services:
+  redis:
+    image: redis:latest
+    container_name: redis
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_USER=${REDIS_USER}
+      - REDIS_USER_PASSWORD=${REDIS_USER_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redisdata:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    command: >
+      sh -c '
+        mkdir -p /usr/local/etc/redis &&
+        echo "bind 0.0.0.0" > /usr/local/etc/redis/redis.conf &&
+        echo "requirepass $REDIS_PASSWORD" >> /usr/local/etc/redis/redis.conf &&
+        echo "appendonly yes" >> /usr/local/etc/redis/redis.conf &&
+        echo "appendfsync everysec" >> /usr/local/etc/redis/redis.conf &&
+        echo "user default on nopass ~* +@all" > /usr/local/etc/redis/users.acl &&
+        echo "user $REDIS_USER on >$REDIS_USER_PASSWORD ~* +@all" >> /usr/local/etc/redis/users.acl &&
+        redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl
+      '
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "$REDIS_PASSWORD", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    networks:
+      - api-gateway-network
+
+  keycloak-pg:
+    image: postgres:alpine3.19
+    container_name: keycloak-pg
+    ports:
+      - "5433:5432"
+    environment:
+      - 'POSTGRES_USER=postgres'
+      - 'POSTGRES_PASSWORD=postgres'
+    networks:
+      - api-gateway-network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:22.0.0
+    container_name: keycloak
+    environment:
+      #KC_DB: postgres
+      #KC_DB_USERNAME: postgres
+      #KC_DB_PASSWORD: postgres
+      #KC_DB_URL: jdbc:postgresql://keycloak-pg:5432/postgres
+      #KC_HOSTNAME: mykeycloak # MUST MATCH WITH URL TO ACCESS ADMIN CONSOLE (URL TO REDIRECT TO)!
+      #KC_HOSTNAME_PORT: 8080
+      #KC_HOSTNAME_STRICT: "false"
+      #KC_HOSTNAME_STRICT_HTTPS: "false"
+      #KC_HTTPS_PORT: 8443
+      KC_LOG_LEVEL: INFO
+      KC_METRICS_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HOME: /opt/keycloak
+    depends_on:
+      - keycloak-pg
+    volumes:
+      - ./keycloak/conf/:/opt/keycloak/conf/
+      - ./keycloak/import/spmia-realm-2.json:/opt/keycloak/data/import/import.json
+      - ./keycloak/themes/:/opt/keycloak/themes/
+    #entrypoint: [ "/opt/keycloak/bin/kc.sh", "start-dev", "--import-realm", "--http-port=8180", "--spi-theme-static-max-age=-1", "--spi-theme-cache-themes=false", "--spi-theme-cache-templates=false", "--spi-theme-welcome-theme=theme-welcome" ] # Development mode. Disabled cache.
+    entrypoint: [ "/opt/keycloak/bin/kc.sh", "start-dev", "--import-realm", "--spi-theme-static-max-age=-1", "--spi-theme-cache-themes=false", "--spi-theme-cache-templates=false", "--spi-theme-welcome-theme=theme-welcome" ] # Development mode. Disabled cache.
+    #entrypoint: [ "/opt/keycloak/bin/kc.sh", "start", "--import-realm", "--http-port=8180", "--spi-theme-welcome-theme=theme-welcome" ] # Production mode.
+    ports:
+      - "8080:8080"
+      - "8443:8443" # By-default Keycloak listens for HTTPS traffic on port 8443.
+      - "9000:9000" # Management interface port.
+    healthcheck:
+      test: [ "CMD-SHELL", "bash", "-c", "echo -n '' > /dev/tcp/127.0.0.1/8180" ]
+      interval: 5s # After 5 seconds.
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - api-gateway-network
+
+  dhoster:
+    image: dvdarias/docker-hoster
+    container_name: dhoster
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock
+      - /etc/hosts:/tmp/hosts
+
+networks:
+  api-gateway-network:
+    name: api-gateway-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.0.0/24
+          gateway: 10.10.0.1
