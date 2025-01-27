@@ -1,7 +1,7 @@
 version: "3.8"
 services:
   redis:
-    image: redis:latest
+    image: redis:8.0-M03
     container_name: redis
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
@@ -38,6 +38,16 @@ services:
     restart: unless-stopped
     tty: true
     stdin_open: true
+    networks:
+      - api-gateway-network
+
+  redis-insight:
+    image: redis/redisinsight:2.64
+    container_name: redis-insight
+    ports:
+      - "5540:5540"
+    volumes:
+      - ./redisinsight:/data
     networks:
       - api-gateway-network
 

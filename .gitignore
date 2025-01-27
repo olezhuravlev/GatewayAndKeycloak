@@ -1,2 +1,5 @@
 .idea
 .gradle
+redisdata
+redisinsight/*
+!redisinsight/redisinsight.db

@@ -2,15 +2,19 @@
 
 Article [Securing Services with Spring Cloud Gateway](https://spring.io/blog/2019/08/16/securing-services-with-spring-cloud-gateway).
 
-1. run `oauth2-resource-server-app`
+1. Start `redis`, `redis-insight`, `keycloak-pg`, `keycloak`, `dhoster`:
+
+```bash
+$ `docker-compose up -d`
+```
+
+2. Start project `oauth2-resource-server-app`
 
 ```bash
 $ ./gradlew :oauth2-resource-server-app:bootRun
 ```
 
-2. `docker-compose up -d`
-
-3. run `api-gateway`
+3. Start project `api-gateway`
 
 ```bash
 $ ./gradlew :api-gateway:bootRun
